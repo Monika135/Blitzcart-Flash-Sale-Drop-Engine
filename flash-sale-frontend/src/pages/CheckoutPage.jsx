@@ -10,6 +10,27 @@ import CountdownBadge from '../components/CountdownBadge';
 import AlertBanner from '../components/AlertBanner';
 import Button from '../components/Button';
 
+function loadRazorpaySdk() {
+  return new Promise((resolve) => {
+    if (typeof window !== 'undefined' && window.Razorpay) {
+      resolve(true);
+      return;
+    }
+    const existing = document.querySelector('script[src="https://checkout.razorpay.com/v1/checkout.js"]');
+    if (existing) {
+      existing.addEventListener('load', () => resolve(true));
+      existing.addEventListener('error', () => resolve(false));
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.async = true;
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+}
+
 export default function CheckoutPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -18,6 +39,11 @@ export default function CheckoutPage() {
   const [payError, setPayError] = useState(null);
   const [cancelling, setCancelling] = useState(false);
   const [processing, setProcessing] = useState(false);
+
+  // Pre-load Razorpay SDK on-demand only when entering checkout
+  useEffect(() => {
+    loadRazorpaySdk();
+  }, []);
 
   const secondsLeft = useCountdown(reservation?.expires_at);
   const expired = reservation && secondsLeft <= 0;
@@ -64,9 +90,12 @@ export default function CheckoutPage() {
     return candidate.startsWith('order_') ? candidate : null;
   }
 
-  function openRazorpayCheckout(orderIdToPayFor) {
+  async function openRazorpayCheckout(orderIdToPayFor) {
     if (typeof window.Razorpay === 'undefined') {
-      throw new Error('Razorpay SDK failed to load. Please refresh the page.');
+      const loaded = await loadRazorpaySdk();
+      if (!loaded || typeof window.Razorpay === 'undefined') {
+        throw new Error('Razorpay SDK failed to load. Please disable any ad-blockers or refresh the page.');
+      }
     }
 
     const razorpayKey = import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_TKcBJPfC55z66F';
@@ -75,8 +104,8 @@ export default function CheckoutPage() {
       key: razorpayKey,
       amount: totalAmountCents,
       currency: 'INR',
-      name: 'VibeEnergy Drop',
-      description: productSnapshot?.name || 'Order Checkout',
+      name: 'Blitzcart Drop Engine',
+      description: `Payment for ${productSnapshot?.name || 'Order Checkout'} (10m Hold)`,
       order_id: orderIdToPayFor,
       prefill: {
         name: user?.name || '',
@@ -123,7 +152,7 @@ export default function CheckoutPage() {
 
       const razorpayOrderId = getRazorpayOrderId(result);
       if (razorpayOrderId) {
-        openRazorpayCheckout(razorpayOrderId);
+        await openRazorpayCheckout(razorpayOrderId);
         return;
       }
 

@@ -130,7 +130,30 @@ export default function ProductPage() {
     );
   }
 
-  if (!products || !activeSku) {
+  if (!products) {
+    return (
+      <Centered>
+        <ProductCardSkeleton />
+      </Centered>
+    );
+  }
+
+  if (products.length === 0) {
+    return (
+      <Centered>
+        <div className="w-full max-w-md text-center glass-panel p-8 rounded-3xl border border-white/10">
+          <p className="text-sm font-semibold text-white mb-2">No Active Flash Drops</p>
+          <p className="text-xs text-ink-muted leading-relaxed">
+            There are currently no active products in the drop catalog. Initialize products with{' '}
+            <code className="text-sour font-mono">python manage.py seed_product</code> and{' '}
+            <code className="text-sour font-mono">python manage.py init_stock --all</code> on the backend.
+          </p>
+        </div>
+      </Centered>
+    );
+  }
+
+  if (!activeSku) {
     return (
       <Centered>
         <ProductCardSkeleton />
@@ -176,9 +199,9 @@ export default function ProductPage() {
 
                 {/* Floating product image */}
                 <img
-                  src={assets.image}
+                  src={product.imageUrl || assets.image}
                   alt={product.name}
-                  className="product-float relative z-10 w-full h-auto object-contain transition-transform duration-500 hover:scale-105"
+                  className="product-float relative z-10 w-full h-auto max-h-72 object-contain transition-transform duration-500 hover:scale-105"
                   style={{
                     filter: `drop-shadow(0 20px 45px ${assets.glowColor})`
                   }}
@@ -194,13 +217,12 @@ export default function ProductPage() {
           </div>
 
           <div className="flex flex-col justify-center p-6 sm:p-8 md:p-10">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-[.2em] text-sour">VibeEnergy exclusive</p>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-[.2em] text-sour">Blitzcart exclusive drop</p>
             <div className="mb-6 flex items-start justify-between gap-6">
-              <div>
-                <h1 className="font-display text-3xl font-bold leading-tight tracking-tight">{product.name}</h1>
+              <div> <h1 className="font-display text-3xl font-bold leading-tight tracking-tight">{product.name}</h1>
                 <p className="mt-2 text-sm leading-6 text-ink-muted">{product.subtitle}</p>
               </div>
-              <span className="font-mono text-2xl font-semibold tabular-nums text-white shrink-0 whitespace-nowrap">Rs. {((product.priceCents / 100) * 83).toLocaleString('en-IN')}</span>
+              <span className="font-mono text-2xl font-semibold tabular-nums text-white shrink-0 whitespace-nowrap">Rs. {(product.price || Math.round((product.priceCents / 100) * 83)).toLocaleString('en-IN')}</span>
             </div>
             <div className="mb-3"><StockBanner remaining={product.remainingStock} viewersLive={product.viewersLive} /></div>
             <div className="mb-7"><StockProgressBar remaining={product.remainingStock} total={product.totalStock} /></div>
@@ -280,10 +302,10 @@ function ProductCard({ product, index, active, onClick }) {
         </span>
       )}
       
-      {/* Sneaker Image */}
-      <div className="h-24 w-24 flex items-center justify-center mb-3">
+      {/* Product Image */}
+      <div className="h-24 w-24 flex items-center justify-center mb-3 overflow-hidden rounded-xl bg-black/20">
         <img
-          src={assets.image}
+          src={product.imageUrl || assets.image}
           alt={product.name}
           className="w-full h-full object-contain drop-shadow-[0_8px_15px_rgba(0,0,0,0.5)] transition-transform duration-300 group-hover:scale-105"
         />
@@ -294,7 +316,7 @@ function ProductCard({ product, index, active, onClick }) {
         <h3 className="text-xs font-semibold font-display tracking-tight truncate w-full text-white">{product.name}</h3>
         <div className="flex justify-between items-center mt-2.5 text-[11px]">
           <span className="font-mono text-ink-muted">
-            Rs. {((product.priceCents / 100) * 83).toLocaleString('en-IN')}
+            Rs. {(product.price || Math.round((product.priceCents / 100) * 83)).toLocaleString('en-IN')}
           </span>
           <span className={`font-mono font-medium ${isSoldOut ? 'text-ink-faint' : product.remainingStock < 10 ? 'text-alert' : 'text-success'}`}>
             {isSoldOut ? '0 left' : `${product.remainingStock} left`}

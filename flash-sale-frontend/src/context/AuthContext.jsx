@@ -6,43 +6,47 @@ const AuthContext = createContext(null);
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
     // Try to load persisted user state
-    const saved = localStorage.getItem('vibe_user');
+    const saved = localStorage.getItem('blitzcart_user') || localStorage.getItem('vibe_user');
     return saved ? JSON.parse(saved) : null;
   });
 
-  const login = async (email, password) => {
-    const data = await loginUser(email, password);
+  const saveAuthSession = (data, userData) => {
     if (data.access_token) {
+      localStorage.setItem('blitzcart_token', data.access_token);
       localStorage.setItem('vibe_token', data.access_token);
+    }
+    if (data.refresh_token) {
+      localStorage.setItem('blitzcart_refresh_token', data.refresh_token);
       localStorage.setItem('vibe_refresh_token', data.refresh_token);
     }
-    
+    localStorage.setItem('blitzcart_user', JSON.stringify(userData));
+    localStorage.setItem('vibe_user', JSON.stringify(userData));
+    setUser(userData);
+  };
+
+  const login = async (email, password) => {
+    const data = await loginUser(email, password);
     const userData = data.user || {
       name: email.split('@')[0].toUpperCase(),
       email: email,
     };
-    
-    setUser(userData);
-    localStorage.setItem('vibe_user', JSON.stringify(userData));
+    saveAuthSession(data, userData);
     return { success: true };
   };
 
   const signup = async (name, email, password) => {
     const data = await signupUser(name, email, password);
-    if (data.access_token) {
-      localStorage.setItem('vibe_token', data.access_token);
-      localStorage.setItem('vibe_refresh_token', data.refresh_token);
-    }
-
     const userData = data.user || { name, email };
-    
-    setUser(userData);
-    localStorage.setItem('vibe_user', JSON.stringify(userData));
+    saveAuthSession(data, userData);
     return { success: true };
   };
 
   const logout = () => {
     setUser(null);
+    // Explicitly wipe all access tokens, refresh tokens, and persisted sessions
+    localStorage.removeItem('blitzcart_user');
+    localStorage.removeItem('blitzcart_token');
+    localStorage.removeItem('blitzcart_refresh_token');
     localStorage.removeItem('vibe_user');
     localStorage.removeItem('vibe_token');
     localStorage.removeItem('vibe_refresh_token');
