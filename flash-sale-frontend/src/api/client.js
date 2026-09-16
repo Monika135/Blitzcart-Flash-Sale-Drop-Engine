@@ -35,7 +35,7 @@ class ApiError extends Error {
  */
 export async function request(path, { method = 'GET', body, headers = {} } = {}) {
   const url = `${API_BASE_URL}${path}`;
-  const token = localStorage.getItem('vibe_token');
+  const token = localStorage.getItem('blitzcart_token') || localStorage.getItem('vibe_token');
   const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
 
   let res;

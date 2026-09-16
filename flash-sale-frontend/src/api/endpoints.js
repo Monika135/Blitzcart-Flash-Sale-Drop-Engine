@@ -53,6 +53,31 @@ export async function signupUser(name, email, password) {
   });
 }
 
+function normalizeProduct(item) {
+  if (!item) return null;
+  const id = item.id || item.sku || '';
+  const price = typeof item.price === 'number' ? item.price : Number(item.price) || 0;
+  const priceCents = item.priceCents ?? (price > 0 ? Math.round((price * 100) / 83) : 14900);
+  const totalStock = item.totalStock ?? item.total_stock ?? 0;
+  const remainingStock = item.remainingStock ?? item.remaining_stock ?? 0;
+  const viewersLive = item.viewersLive ?? Math.max(15, Math.min(900, remainingStock * 9 + 40));
+
+  return {
+    ...item,
+    id,
+    sku: id,
+    name: item.name || id,
+    subtitle: item.subtitle || item.description || '',
+    price: price || Math.round((priceCents / 100) * 83),
+    priceCents,
+    totalStock,
+    remainingStock,
+    viewersLive,
+    imageUrl: item.imageUrl || item.image_url || '',
+    status: item.status || (remainingStock > 0 ? 'ACTIVE' : 'SOLD_OUT'),
+  };
+}
+
 /**
  * GET /inventory/products/
  * Response: Array of {
@@ -65,7 +90,9 @@ export async function getProducts() {
     await mockDelay(300);
     return mock.getProducts();
   }
-  return request('/api/inventory/products/');
+  const res = await request('/api/inventory/products/');
+  const list = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []);
+  return list.map(normalizeProduct).filter(Boolean);
 }
 
 /**
@@ -82,7 +109,9 @@ export async function getProduct(sku) {
     await mockDelay(300);
     return mock.getProduct(sku);
   }
-  return request(`/api/inventory/products/${sku}/`);
+  const res = await request(`/api/inventory/products/${sku}/`);
+  const item = res?.data || res;
+  return normalizeProduct(item);
 }
 
 /**
@@ -118,7 +147,8 @@ export async function getReservationStatus(reservationId) {
     await mockDelay(200);
     return mock.getReservationStatus(reservationId);
   }
-  return request(`/api/orders/reservations/${reservationId}/status/`);
+  const res = await request(`/api/orders/reservations/${reservationId}/status/`);
+  return res?.data || res;
 }
 
 /**
@@ -131,19 +161,20 @@ export async function getReservationStatus(reservationId) {
  * This does NOT confirm the order — it starts an async charge. Keep
  * polling getReservationStatus() for the actual outcome.
  */
-export async function initiatePayment(reservationId, cardToken) {
+export async function initiatePayment(reservationId) {
   if (USE_MOCK) {
     await mockDelay(500);
-    return mock.initiatePayment(reservationId, cardToken);
+    return mock.initiatePayment(reservationId);
   }
   return request('/api/orders/reservations/pay/', {
     method: 'POST',
-    body: { card_token: cardToken, reservation_id: reservationId },
+    body: { reservation_id: reservationId },
   });
 }
 
 /**
- * POST /orders/reservations/:reservationId/cancel/
+ * POST /orders/reservations/cancel/
+ * Body:     { reservation_id }
  * Response: { reservation_id, status: 'cancelled' }
  * Errors:   409 if a payment is currently in flight for this reservation
  *           (can't safely release stock while the gateway might still
@@ -154,7 +185,10 @@ export async function cancelReservation(reservationId) {
     await mockDelay(300);
     return mock.cancelReservation(reservationId);
   }
-  return request(`/api/orders/reservations/${reservationId}/cancel/`, { method: 'POST' });
+  return request('/api/orders/reservations/cancel/', {
+    method: 'POST',
+    body: { reservation_id: reservationId },
+  });
 }
 
 /**

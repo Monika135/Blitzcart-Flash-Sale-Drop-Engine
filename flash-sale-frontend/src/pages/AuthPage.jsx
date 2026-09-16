@@ -1,15 +1,31 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Button from '../components/Button';
 
 export default function AuthPage() {
-  const { login, signup } = useAuth();
-  const [isSignUp, setIsSignUp] = useState(false);
+  const { login, signup, user } = useAuth();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const initialMode = searchParams.get('mode') === 'signup';
+
+  const [isSignUp, setIsSignUp] = useState(initialMode);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  // If already authenticated, redirect to store
+  useEffect(() => {
+    if (user) {
+      navigate('/');
+    }
+  }, [user, navigate]);
+
+  useEffect(() => {
+    setIsSignUp(searchParams.get('mode') === 'signup');
+  }, [searchParams]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -21,6 +37,7 @@ export default function AuthPage() {
       } else {
         await login(email, password);
       }
+      navigate('/');
     } catch (err) {
       setError(err.message || 'Authentication failed. Please try again.');
     } finally {
@@ -35,15 +52,31 @@ export default function AuthPage() {
         <div className="absolute -left-16 -top-16 h-40 w-40 rounded-full bg-accent/10 blur-3xl pointer-events-none" />
         <div className="absolute -right-16 -bottom-16 h-40 w-40 rounded-full bg-sour/10 blur-3xl pointer-events-none" />
 
-        <div className="relative text-center mb-8">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-sour to-accent text-xl font-black text-base shadow-glow">
-            V
+        {/* Back Link */}
+        <div className="mb-6 flex items-center justify-between">
+          <Link
+            to="/welcome"
+            className="text-xs font-semibold text-ink-muted hover:text-white flex items-center gap-1.5 transition-colors"
+          >
+            <span>←</span>
+            <span>Back to Engine Overview</span>
+          </Link>
+          <span className="font-mono text-[10px] text-sour bg-sour/10 px-2 py-0.5 rounded border border-sour/20">
+            Blitzcart
+          </span>
+        </div>
+
+        <div className="relative text-center mb-6">
+          <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-sour via-accent to-sour text-xl font-black text-base shadow-glow">
+            ⚡
           </div>
           <h1 className="font-display text-2xl font-bold tracking-tight text-white">
             {isSignUp ? 'Create your account' : 'Welcome back'}
           </h1>
           <p className="text-xs text-ink-muted mt-1.5">
-            {isSignUp ? 'Join VibeEnergy for exclusive limited drops' : 'Sign in to access your dashboard and active reservations'}
+            {isSignUp
+              ? 'Join Blitzcart for live flash drops and instant checkout'
+              : 'Sign in to access live sneaker drops and active reservations'}
           </p>
         </div>
 
@@ -62,7 +95,8 @@ export default function AuthPage() {
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="John Doe"
+                placeholder="Alex Mercer"
+                autoFocus
               />
             </div>
           )}
@@ -74,8 +108,9 @@ export default function AuthPage() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
+              placeholder="alex@example.com"
               autoComplete="email"
+              autoFocus={!isSignUp}
             />
           </div>
 
@@ -122,7 +157,7 @@ export default function AuthPage() {
         {/* Security badge footer */}
         <div className="mt-6 flex items-center justify-center gap-1.5 text-[10px] text-ink-faint">
           <span>🔒</span>
-          <span>Secured with standard 256-bit SSL encryption</span>
+          <span>Secured with 256-bit SSL encryption & idempotency lock</span>
         </div>
       </div>
     </main>
