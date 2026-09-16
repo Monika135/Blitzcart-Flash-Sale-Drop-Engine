@@ -14,6 +14,7 @@ from pathlib import Path
 
 import os
 from dotenv import load_dotenv
+import dj_database_url
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -96,19 +97,30 @@ DATABASE_NAME = os.environ.get("DATABASE_NAME", default="flash_sale_engine")
 DATABASE_SCHEMA = os.environ.get("DATABASE_SCHEMA", default="public")
 REDIS_URL = os.environ.get("REDIS_URL", default="redis://localhost:6379/0")
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.environ.get("DATABASE_NAME", default=DATABASE_NAME),
-        "USER": os.environ.get("DATABASE_USER", default="postgres"),
-        "PASSWORD": os.environ.get("DATABASE_PASSWORD", default=""),
-        "HOST": os.environ.get("DATABASE_HOST", default="localhost"),
-        "PORT": os.environ.get("DATABASE_PORT", default="5432"),
-        "OPTIONS": {
-            "options": f"-c search_path={DATABASE_SCHEMA},access,master,public",
-        },
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+if DATABASE_URL:
+    DATABASES = {
+        "default": dj_database_url.parse(
+            DATABASE_URL,
+            conn_max_age=600,
+        )
     }
-}
+
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": os.environ.get("DATABASE_NAME", default=DATABASE_NAME),
+            "USER": os.environ.get("DATABASE_USER", default="postgres"),
+            "PASSWORD": os.environ.get("DATABASE_PASSWORD", default=""),
+            "HOST": os.environ.get("DATABASE_HOST", default="localhost"),
+            "PORT": os.environ.get("DATABASE_PORT", default="5432"),
+            "OPTIONS": {
+                "options": f"-c search_path={DATABASE_SCHEMA},access,master,public",
+            },
+        }
+    }
 
 # Password validation
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
