@@ -362,21 +362,6 @@ Then, in **Razorpay Dashboard → Settings → Webhooks → Add New Webhook**:
 - **Secret**: must match `RAZORPAY_WEBHOOK_SECRET` in `.env`
 - **Events**: `payment.captured`, `payment.failed`, `order.paid`
 
-`ALLOWED_HOSTS` and `CSRF_TRUSTED_ORIGINS` already whitelist `*.ngrok-free.app` and `*.ngrok.io`, so no further config is needed.
-
-**Without ngrok**, you can still test everything through `InitiatePaymentView` — you just won't see a reservation flip to `confirmed` unless you complete a real Razorpay test-mode payment (test card `4111 1111 1111 1111`, any future expiry/CVV) or hand-craft a signed webhook call yourself:
-
-```bash
-BODY='{"id":"evt_test_1","event":"payment.captured","payload":{"payment":{"entity":{"order_id":"<payment_reference>","error_description":""}}}}'
-SIG=$(python3 -c "import hmac,hashlib,sys,os; print(hmac.new(os.environ['RAZORPAY_WEBHOOK_SECRET'].encode(), sys.argv[1].encode(), hashlib.sha256).hexdigest())" "$BODY")
-
-curl -X POST http://localhost:8000/api/orders/payments/webhook/ \
-  -H "Content-Type: application/json" \
-  -H "X-Razorpay-Signature: $SIG" \
-  -d "$BODY"
-```
-For a decline, set `"event":"payment.failed"` and populate `"error_description"`.
-
 ---
 
 ## 🧪 Concurrency & Load Testing
@@ -476,8 +461,3 @@ Expected: exactly **one** `201`; the other 49 responses are `200`s with `replaye
 | T27 | Cancel a pending reservation | `200`, `status:"cancelled"`, stock released |
 | T28 | Cancel while payment in flight | `409`, cannot cancel mid-charge |
 
----
-
-## 📜 License & Credits
-
-Built to demonstrate production-level concurrency patterns, distributed systems resilience, and bulletproof transactional integrity in a real-world flash-sale scenario.
